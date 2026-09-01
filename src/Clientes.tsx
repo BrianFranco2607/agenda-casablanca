@@ -96,9 +96,10 @@ export default function Clientes({ onVolver }: { onVolver: () => void }) {
       if (cli.citas.length === 0) {
         if (c.cliente) cli.nombre = c.cliente;
         if (c.cumple) cli.cumple = c.cumple;
+        // la preferencia de promos es la de su cita más reciente
+        cli.aceptaPromos = !!c.acepta_promos;
       }
       cli.citas.push(c);
-      if (c.acepta_promos) cli.aceptaPromos = true;
       if (c.estado === "completada") {
         cli.visitas += 1;
         cli.totalGastado += c.precio || 0;

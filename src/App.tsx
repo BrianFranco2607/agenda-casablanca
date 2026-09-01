@@ -13,7 +13,12 @@ import Clientes from "./Clientes";
 import Ocupacion from "./Ocupacion";
 import Marca from "./Marca";
 import { llenar, linkWhatsApp } from "./whatsapp";
-import { PLANTILLA_GRACIAS, PLANTILLA_RECORDATORIO } from "./config";
+import {
+  PLANTILLA_GRACIAS,
+  PLANTILLA_RECORDATORIO,
+  PLANTILLA_CONFIRMACION,
+  PLANTILLA_CUMPLE,
+} from "./config";
 
 const hoyISO = () => new Date().toLocaleDateString("en-CA");
 
@@ -65,6 +70,9 @@ export default function App() {
   const [filtro, setFiltro] = useState<string>("");
   const [form, setForm] = useState(false);
   const [editando, setEditando] = useState<CitaFull | null>(null);
+  const [cumples, setCumples] = useState<{ cliente: string; telefono: string }[]>(
+    []
+  );
 
   async function cargar() {
     setCargando(true);
@@ -77,6 +85,33 @@ export default function App() {
     cargar();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dia]);
+
+  // cumpleaños de MAÑANA (aviso discreto, 1 día antes)
+  useEffect(() => {
+    (async () => {
+      const man = new Date();
+      man.setDate(man.getDate() + 1);
+      const mmdd = `${String(man.getMonth() + 1).padStart(2, "0")}-${String(
+        man.getDate()
+      ).padStart(2, "0")}`;
+      const { data } = await supabase
+        .from("citas")
+        .select("cliente, telefono, cumple")
+        .not("cumple", "is", null);
+      const vistos = new Set<string>();
+      const lista: { cliente: string; telefono: string }[] = [];
+      for (const c of (data as any[]) ?? []) {
+        const cum = String(c.cumple || "");
+        const md = cum.length >= 5 ? cum.slice(-5) : cum;
+        if (md !== mmdd) continue;
+        const tel = (c.telefono || "").trim();
+        if (!tel || vistos.has(tel)) continue;
+        vistos.add(tel);
+        lista.push({ cliente: c.cliente || "Cliente", telefono: tel });
+      }
+      setCumples(lista);
+    })();
+  }, []);
 
   const visibles = useMemo(
     () =>
@@ -147,6 +182,26 @@ export default function App() {
     cargar();
   }
 
+  async function confirmar(c: CitaFull) {
+    if (c.telefono) {
+      window.open(
+        linkWhatsApp(
+          c.telefono,
+          llenar(PLANTILLA_CONFIRMACION, {
+            cliente: c.cliente,
+            servicio: c.servicio,
+            estilista: c.estilista,
+            fecha: fechaLarga(c.fecha),
+            hora: c.hora.slice(0, 5),
+          })
+        ),
+        "_blank"
+      );
+    }
+    await supabase.from("citas").update({ estado: "confirmada" }).eq("id", c.id);
+    cargar();
+  }
+
   function nueva() {
     setEditando(null);
     setForm(true);
@@ -207,6 +262,32 @@ export default function App() {
             + Nueva cita
           </button>
         </div>
+
+        {/* Aviso de cumpleaños (mañana) — solo aparece si hay alguien */}
+        {cumples.length > 0 && (
+          <div className="mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-[#D8B25A]/50 bg-[#FBF6EA] px-4 py-2.5 text-sm">
+            <span className="text-[#8A6A1E]">
+              🎂 Mañana cumple{" "}
+              <span className="font-semibold">
+                {cumples.map((c) => c.cliente).join(", ")}
+              </span>
+            </span>
+            {cumples.map((c) => (
+              <a
+                key={c.telefono}
+                href={linkWhatsApp(
+                  c.telefono,
+                  llenar(PLANTILLA_CUMPLE, { cliente: c.cliente })
+                )}
+                target="_blank"
+                rel="noreferrer"
+                className="ml-auto rounded-lg bg-[#4A7A57] px-2.5 py-1 text-xs font-medium text-white transition hover:brightness-[1.05]"
+              >
+                Felicitar a {c.cliente.split(" ")[0]}
+              </a>
+            ))}
+          </div>
+        )}
 
         {/* Resumen del día */}
         <section className="mb-6 rounded-2xl border border-[#E7DCC2] bg-white p-4 sm:p-5">
@@ -294,6 +375,11 @@ export default function App() {
                               .join("   |   ")
                           : `${c.servicio} · ${c.estilista}`}
                       </p>
+                      {c.notas && (
+                        <p className="mt-1 rounded-md bg-[#FBF6EA] px-2 py-1 text-xs text-[#8A6A1E]">
+                          Nota: {c.notas}
+                        </p>
+                      )}
                     </div>
                     <p className="shrink-0 text-sm font-semibold tabular-nums">
                       {plata(total)}
@@ -318,9 +404,15 @@ export default function App() {
                         Gracias
                       </a>
                     )}
-                    {(c.estado === "pendiente" ||
-                      c.estado === "confirmada") &&
-                      c.telefono && (
+                    {c.estado === "pendiente" && c.telefono && (
+                      <button
+                        onClick={() => confirmar(c)}
+                        className="rounded-lg bg-[#4A7A57] px-2.5 py-1 text-xs font-medium text-white transition hover:brightness-[1.05]"
+                      >
+                        Confirmar
+                      </button>
+                    )}
+                    {c.estado === "confirmada" && c.telefono && (
                       <a
                         href={linkWhatsApp(
                           c.telefono,

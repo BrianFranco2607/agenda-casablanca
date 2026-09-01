@@ -623,7 +623,7 @@ function Card({
 type FilaEquipo = {
   id: string;
   nombre: string;
-  porcentaje: number;
+  porcentaje: number | "";
   activo: boolean;
   orden: number;
 };
@@ -680,11 +680,12 @@ function FormEquipo({ onCerrar }: { onCerrar: () => void }) {
   }
 
   async function guardarFila(f: FilaEquipo) {
-    if (f.porcentaje < 0 || f.porcentaje > 100)
+    const pct = f.porcentaje === "" ? 0 : f.porcentaje;
+    if (pct < 0 || pct > 100)
       return alert("El porcentaje debe estar entre 0 y 100.");
     const { error } = await supabase
       .from("tenant_estilistas")
-      .update({ porcentaje: f.porcentaje / 100, activo: f.activo })
+      .update({ porcentaje: pct / 100, activo: f.activo })
       .eq("id", f.id);
     if (error) return alert("Error: " + error.message);
     await cargar();
@@ -760,7 +761,9 @@ function FormEquipo({ onCerrar }: { onCerrar: () => void }) {
                       value={e.porcentaje}
                       onChange={(ev) => {
                         const porcentaje =
-                          ev.target.value === "" ? 0 : Number(ev.target.value);
+                          ev.target.value === ""
+                            ? ""
+                            : Number(ev.target.value);
                         setLista((prev) =>
                           prev.map((x, i) =>
                             i === idx ? { ...x, porcentaje } : x
