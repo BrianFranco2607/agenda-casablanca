@@ -20,6 +20,7 @@ type LineaServicio = {
   servicio: string;
   estilista: string;
   precio: number;
+  producto: number;
 };
 
 type ItemHistorial = {
@@ -36,6 +37,7 @@ function lineaNueva(primerServicio?: {
     servicio: primerServicio?.nombre ?? "",
     estilista: "",
     precio: primerServicio?.precio ?? 0,
+    producto: 0,
   };
 }
 
@@ -153,6 +155,7 @@ export default function FormCita({
         servicio: i.servicio,
         estilista: i.estilista,
         precio: i.precio,
+        producto: i.producto ?? 0,
       }));
     }
     return [lineaNueva(SERVICIOS[0])];
@@ -170,7 +173,7 @@ export default function FormCita({
   const [guardando, setGuardando] = useState(false);
 
   const total = useMemo(
-    () => lineas.reduce((s, l) => s + l.precio, 0),
+    () => lineas.reduce((s, l) => s + l.precio + (l.producto || 0), 0),
     [lineas]
   );
   const totalPagos = efectivo + transferencia;
@@ -287,7 +290,7 @@ export default function FormCita({
 
     await guardarServiciosYPagos(
       citaId!,
-      lineas.map((l) => ({ ...l, producto: 0 })),
+      lineas.map((l) => ({ ...l })),
       pagos,
       tenant.id
     );
@@ -466,25 +469,47 @@ export default function FormCita({
                       ))}
                     </select>
 
-                    <div>
-                      <label className="mb-1 block text-xs text-[#8A8175]">
-                        Precio
-                      </label>
-                      <input
-                        type="number"
-                        step={1000}
-                        min={0}
-                        className={input}
-                        value={l.precio === 0 ? "" : l.precio}
-                        onChange={(e) =>
-                          cambiarLinea(
-                            idx,
-                            "precio",
-                            e.target.value === "" ? 0 : Number(e.target.value)
-                          )
-                        }
-                        onFocus={(e) => e.target.select()}
-                      />
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="mb-1 block text-xs text-[#8A8175]">
+                          Precio
+                        </label>
+                        <input
+                          type="number"
+                          step={1000}
+                          min={0}
+                          className={input}
+                          value={l.precio === 0 ? "" : l.precio}
+                          onChange={(e) =>
+                            cambiarLinea(
+                              idx,
+                              "precio",
+                              e.target.value === "" ? 0 : Number(e.target.value)
+                            )
+                          }
+                          onFocus={(e) => e.target.select()}
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-1 block text-xs text-[#8A8175]">
+                          Producto (se cobra +)
+                        </label>
+                        <input
+                          type="number"
+                          step={1000}
+                          min={0}
+                          className={input}
+                          value={l.producto === 0 ? "" : l.producto}
+                          onChange={(e) =>
+                            cambiarLinea(
+                              idx,
+                              "producto",
+                              e.target.value === "" ? 0 : Number(e.target.value)
+                            )
+                          }
+                          onFocus={(e) => e.target.select()}
+                        />
+                      </div>
                     </div>
                   </div>
                 ))}
