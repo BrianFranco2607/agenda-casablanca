@@ -1,4 +1,10 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import {
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+  type ChangeEvent,
+} from "react";
 import { supabase, aMinutos, aHora } from "./db";
 import { SALON, HORARIO } from "./config";
 
@@ -217,8 +223,10 @@ export default function Reserva() {
     setListo({ lineas: validas, dia, hora, nombre: cliente.trim() });
   }
 
-  const SEL =
-    "min-w-0 flex-1 rounded-xl border border-[#E7DCC2] bg-white px-3 py-2.5 text-sm";
+  const CAMPO =
+    "w-full rounded-xl border border-[#E7DCC2] bg-white px-4 py-2.5 text-sm transition focus:outline-none focus:ring-2 focus:ring-[#D8B25A] focus:ring-offset-2 focus:ring-offset-[#FBF9F4]";
+  const ANILLO =
+    "focus:outline-none focus:ring-2 focus:ring-[#D8B25A] focus:ring-offset-2 focus:ring-offset-[#FBF9F4]";
 
   // ---------- confirmación ----------
   if (listo) {
@@ -263,7 +271,7 @@ export default function Reserva() {
                 setCliente("");
                 setTelefono("");
               }}
-              className="mt-5 w-full rounded-full border border-[#E7DCC2] py-2.5 text-sm font-medium text-[#2E2A26]"
+              className={`mt-5 w-full rounded-full border border-[#E7DCC2] py-2.5 text-sm font-medium text-[#2E2A26] transition hover:bg-[#FBF9F4] active:scale-[0.99] ${ANILLO}`}
             >
               Agendar otra cita
             </button>
@@ -315,7 +323,7 @@ export default function Reserva() {
                 href={`https://wa.me/${SALON.codigoPais}${CONTACTO.whatsapp}`}
                 target="_blank"
                 rel="noreferrer"
-                className="rounded-lg bg-[#4A7A57] px-3 py-1.5 text-xs font-medium text-white transition hover:brightness-[1.05]"
+                className={`rounded-lg bg-[#4A7A57] px-3 py-1.5 text-xs font-medium text-white transition hover:brightness-[1.05] active:scale-95 ${ANILLO}`}
               >
                 Escríbenos
               </a>
@@ -323,7 +331,7 @@ export default function Reserva() {
                 href={`https://instagram.com/${CONTACTO.instagram}`}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center gap-1.5 rounded-lg border border-[#E7DCC2] bg-white px-3 py-1.5 text-xs font-medium text-[#2E2A26] transition hover:bg-[#FBF9F4]"
+                className={`inline-flex items-center gap-1.5 rounded-lg border border-[#E7DCC2] bg-white px-3 py-1.5 text-xs font-medium text-[#2E2A26] transition hover:bg-[#FBF9F4] active:scale-95 ${ANILLO}`}
               >
                 <IgIcon /> @{CONTACTO.instagram}
               </a>
@@ -342,16 +350,19 @@ export default function Reserva() {
               </p>
             ) : (
               <div className="space-y-6">
-                <Paso n={1} titulo="Tus servicios">
+                <Paso
+                  n={1}
+                  titulo="Tus servicios"
+                  completo={validas.length > 0 && !hayIncompleta}
+                >
                   <div className="space-y-2">
                     {lineas.map((l, idx) => (
                       <div key={idx} className="flex flex-wrap items-center gap-2">
-                        <select
+                        <SelectorConFlecha
                           value={l.servicio}
                           onChange={(e) =>
                             setLinea(idx, "servicio", e.target.value)
                           }
-                          className={SEL}
                         >
                           <option value="">Servicio…</option>
                           {opciones.map((o) => (
@@ -361,18 +372,17 @@ export default function Reserva() {
                                 : o.nombre}
                             </option>
                           ))}
-                        </select>
+                        </SelectorConFlecha>
                         {l.servicio === COMBO ? (
                           <div className="flex min-w-0 flex-1 items-center rounded-xl border border-[#D8B25A]/50 bg-[#FBF6EA] px-3 py-2.5 text-xs text-[#8A6A1E]">
                             Manicure · Alejandra + Pedicure · Dufay
                           </div>
                         ) : (
-                          <select
+                          <SelectorConFlecha
                             value={l.estilista}
                             onChange={(e) =>
                               setLinea(idx, "estilista", e.target.value)
                             }
-                            className={SEL}
                           >
                             <option value="">¿Con quién?…</option>
                             {estilistas.map((e) => (
@@ -380,12 +390,12 @@ export default function Reserva() {
                                 {e}
                               </option>
                             ))}
-                          </select>
+                          </SelectorConFlecha>
                         )}
                         {lineas.length > 1 && (
                           <button
                             onClick={() => quitarLinea(idx)}
-                            className="rounded-lg px-2 py-1 text-xs text-[#8E2B44] hover:underline"
+                            className={`rounded-lg px-2 py-1 text-xs text-[#8E2B44] transition hover:underline active:scale-95 ${ANILLO}`}
                           >
                             Quitar
                           </button>
@@ -395,19 +405,19 @@ export default function Reserva() {
                   </div>
                   <button
                     onClick={agregarLinea}
-                    className="mt-2 text-sm font-medium text-[#B8892E] hover:underline"
+                    className={`mt-2 rounded-lg text-sm font-medium text-[#B8892E] transition hover:underline active:scale-95 ${ANILLO}`}
                   >
                     + Agregar otro servicio
                   </button>
                 </Paso>
 
-                <Paso n={2} titulo="Día y hora">
+                <Paso n={2} titulo="Día y hora" completo={!!dia && !!hora}>
                   <input
                     type="date"
                     min={hoyISO()}
                     value={dia}
                     onChange={(e) => setDia(e.target.value)}
-                    className="mb-3 w-full rounded-xl border border-[#E7DCC2] bg-white px-4 py-2.5 text-sm"
+                    className={`${CAMPO} mb-3`}
                   />
                   {validas.length === 0 ? (
                     <p className="text-xs text-[#A89B84]">
@@ -424,7 +434,7 @@ export default function Reserva() {
                         <button
                           key={h}
                           onClick={() => setHora(h)}
-                          className={`rounded-lg px-3 py-1.5 text-sm tabular-nums transition ${
+                          className={`rounded-lg px-3 py-1.5 text-sm tabular-nums transition active:scale-95 ${ANILLO} ${
                             hora === h
                               ? "bg-[#B8892E] text-white"
                               : "border border-[#E7DCC2] bg-white text-[#2E2A26] hover:bg-[#FBF9F4]"
@@ -443,20 +453,24 @@ export default function Reserva() {
                     onChange={(e) => setNotas(e.target.value)}
                     rows={2}
                     placeholder="¿Algo que debamos saber? Ej: el diseño que quieres, alguna alergia, etc."
-                    className="w-full resize-none rounded-xl border border-[#E7DCC2] bg-white px-4 py-2.5 text-sm"
+                    className={`${CAMPO} resize-none`}
                   />
                 </Paso>
 
-                <Paso n={4} titulo="Tus datos">
+                <Paso
+                  n={4}
+                  titulo="Tus datos"
+                  completo={!!cliente.trim() && !!telefono.trim()}
+                >
                   <div className="grid gap-2 sm:grid-cols-2">
                     <input
-                      className="w-full rounded-xl border border-[#E7DCC2] bg-white px-4 py-2.5 text-sm"
+                      className={CAMPO}
                       placeholder="Tu nombre"
                       value={cliente}
                       onChange={(e) => setCliente(e.target.value)}
                     />
                     <input
-                      className="w-full rounded-xl border border-[#E7DCC2] bg-white px-4 py-2.5 text-sm"
+                      className={CAMPO}
                       placeholder="Tu WhatsApp"
                       inputMode="tel"
                       value={telefono}
@@ -474,7 +488,7 @@ export default function Reserva() {
                 <button
                   onClick={reservar}
                   disabled={!completo || enviando}
-                  className="w-full rounded-full bg-linear-to-r from-[#D8B25A] via-[#C79B3F] to-[#B8892E] py-3.5 text-sm font-semibold text-[#2E2A26] shadow-[0_10px_24px_-10px_rgba(184,137,46,0.7)] transition hover:brightness-[1.04] disabled:opacity-50"
+                  className={`w-full rounded-full bg-linear-to-r from-[#D8B25A] via-[#C79B3F] to-[#B8892E] py-3.5 text-sm font-semibold text-[#2E2A26] shadow-[0_10px_24px_-10px_rgba(184,137,46,0.7)] transition hover:brightness-[1.04] active:scale-[0.99] disabled:opacity-50 disabled:active:scale-100 ${ANILLO}`}
                 >
                   {enviando ? "Agendando…" : "Reservar cita"}
                 </button>
@@ -602,6 +616,37 @@ function IgIcon() {
   );
 }
 
+function SelectorConFlecha({
+  value,
+  onChange,
+  children,
+}: {
+  value: string;
+  onChange: (e: ChangeEvent<HTMLSelectElement>) => void;
+  children: ReactNode;
+}) {
+  return (
+    <div className="relative min-w-0 flex-1">
+      <select
+        value={value}
+        onChange={onChange}
+        className="w-full appearance-none rounded-xl border border-[#E7DCC2] bg-white px-3 py-2.5 pr-9 text-sm transition focus:outline-none focus:ring-2 focus:ring-[#D8B25A] focus:ring-offset-2 focus:ring-offset-[#FBF9F4]"
+      >
+        {children}
+      </select>
+      <svg
+        viewBox="0 0 20 20"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        className="pointer-events-none absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#B8892E]"
+      >
+        <path d="M5 7.5l5 5 5-5" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    </div>
+  );
+}
+
 function Fondo({ children }: { children: ReactNode }) {
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#F1ECE1] px-4 py-8">
@@ -616,17 +661,23 @@ function Fondo({ children }: { children: ReactNode }) {
 function Paso({
   n,
   titulo,
+  completo,
   children,
 }: {
   n: number;
   titulo: string;
+  completo?: boolean;
   children: ReactNode;
 }) {
   return (
     <div>
       <div className="mb-2 flex items-center gap-2">
-        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#B8892E] text-xs font-semibold text-white">
-          {n}
+        <span
+          className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold text-white transition-colors ${
+            completo ? "bg-[#4A7A57]" : "bg-[#B8892E]"
+          }`}
+        >
+          {completo ? "✓" : n}
         </span>
         <h3 className="text-sm font-semibold text-[#2E2A26]">{titulo}</h3>
       </div>
