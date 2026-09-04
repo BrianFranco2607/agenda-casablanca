@@ -24,6 +24,27 @@ type Servicio = { nombre: string; precio: number; duracion: number };
 type Ocupado = { estilista: string; hora: string; duracion: number };
 type Linea = { servicio: string; estilista: string };
 
+// Combo especial: "Manos y pies" se reparte solo entre las dos estilistas.
+// Si algún día es al revés, invierte estas dos líneas.
+const COMBO = "Manos y pies";
+const COMBO_PARTES: Linea[] = [
+  { servicio: "Manicure", estilista: "Alejandra Agudelo" },
+  { servicio: "Pedicure", estilista: "Dufay Linares" },
+];
+
+// convierte las líneas elegidas en pares (servicio, estilista) reales
+function expandir(ls: Linea[]): Linea[] {
+  const out: Linea[] = [];
+  for (const l of ls) {
+    if (l.servicio === COMBO) {
+      for (const parte of COMBO_PARTES) out.push({ ...parte });
+    } else if (l.servicio && l.estilista) {
+      out.push({ servicio: l.servicio, estilista: l.estilista });
+    }
+  }
+  return out;
+}
+
 export default function Reserva() {
   const [servicios, setServicios] = useState<Servicio[]>([]);
   const [estilistas, setEstilistas] = useState<string[]>([]);
@@ -81,10 +102,26 @@ export default function Reserva() {
     })();
   }, [dia]);
 
-  const validas = useMemo(
-    () => lineas.filter((l) => l.servicio && l.estilista),
+  const validas = useMemo(() => expandir(lineas), [lineas]);
+
+  // línea a medias: servicio elegido (no combo) pero sin estilista
+  const hayIncompleta = useMemo(
+    () =>
+      lineas.some((l) => l.servicio && l.servicio !== COMBO && !l.estilista),
     [lineas]
   );
+
+  // opciones del desplegable: servicios de la base + el combo tras "Pedicure semipermanente"
+  const opciones = useMemo(() => {
+    const out: { nombre: string; combo?: boolean }[] = [];
+    for (const sv of servicios) {
+      out.push({ nombre: sv.nombre });
+      if (sv.nombre === "Pedicure semipermanente")
+        out.push({ nombre: COMBO, combo: true });
+    }
+    if (!out.some((o) => o.combo)) out.unshift({ nombre: COMBO, combo: true });
+    return out;
+  }, [servicios]);
 
   const horarios = useMemo(() => {
     if (validas.length === 0) return [];
@@ -140,7 +177,12 @@ export default function Reserva() {
   }, [horarios, hora]);
 
   const completo =
-    validas.length > 0 && dia && hora && cliente.trim() && telefono.trim();
+    validas.length > 0 &&
+    !hayIncompleta &&
+    dia &&
+    hora &&
+    cliente.trim() &&
+    telefono.trim();
 
   function setLinea(idx: number, campo: keyof Linea, valor: string) {
     setLineas((prev) =>
@@ -312,26 +354,34 @@ export default function Reserva() {
                           className={SEL}
                         >
                           <option value="">Servicio…</option>
-                          {servicios.map((s) => (
-                            <option key={s.nombre} value={s.nombre}>
-                              {s.nombre}
+                          {opciones.map((o) => (
+                            <option key={o.nombre} value={o.nombre}>
+                              {o.combo
+                                ? "Manos y pies (mani + pedi)"
+                                : o.nombre}
                             </option>
                           ))}
                         </select>
-                        <select
-                          value={l.estilista}
-                          onChange={(e) =>
-                            setLinea(idx, "estilista", e.target.value)
-                          }
-                          className={SEL}
-                        >
-                          <option value="">¿Con quién?…</option>
-                          {estilistas.map((e) => (
-                            <option key={e} value={e}>
-                              {e}
-                            </option>
-                          ))}
-                        </select>
+                        {l.servicio === COMBO ? (
+                          <div className="flex min-w-0 flex-1 items-center rounded-xl border border-[#D8B25A]/50 bg-[#FBF6EA] px-3 py-2.5 text-xs text-[#8A6A1E]">
+                            Manicure · Alejandra + Pedicure · Dufay
+                          </div>
+                        ) : (
+                          <select
+                            value={l.estilista}
+                            onChange={(e) =>
+                              setLinea(idx, "estilista", e.target.value)
+                            }
+                            className={SEL}
+                          >
+                            <option value="">¿Con quién?…</option>
+                            {estilistas.map((e) => (
+                              <option key={e} value={e}>
+                                {e}
+                              </option>
+                            ))}
+                          </select>
+                        )}
                         {lineas.length > 1 && (
                           <button
                             onClick={() => quitarLinea(idx)}
